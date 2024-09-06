@@ -5,6 +5,8 @@ package composite
 import (
 	"context"
 	"fmt"
+	"slices"
+	"strings"
 
 	"github.com/oasisprotocol/oasis-core/go/common"
 	"github.com/oasisprotocol/oasis-core/go/common/logging"
@@ -215,7 +217,18 @@ func (p *provisioner) NewRuntime(cfg host.Config) (host.Runtime, error) {
 
 // Implements host.Provisioner.
 func (p *provisioner) Name() string {
-	return "composite"
+	if len(p.kinds) == 0 {
+		return "composite{}"
+	}
+
+	atoms := make([]string, 0, len(p.kinds))
+	for kind, provisioner := range p.kinds {
+		atoms = append(atoms, kind.String()+": "+provisioner.Name())
+	}
+	// Ensure deterministic order.
+	slices.Sort(atoms)
+
+	return "composite{" + strings.Join(atoms, ", ") + "}"
 }
 
 // NewProvisioner returns a composite provisioner that dispatches to the actual provisioner based

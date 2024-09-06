@@ -1,10 +1,11 @@
-package sgx
+package common
 
 import (
 	"sync"
 
 	"github.com/prometheus/client_golang/prometheus"
 
+	"github.com/oasisprotocol/oasis-core/go/common"
 	"github.com/oasisprotocol/oasis-core/go/oasis-node/cmd/common/metrics"
 )
 
@@ -45,11 +46,13 @@ var (
 	metricsOnce sync.Once
 )
 
-// updateAttestationMetrics updates the attestation metrics if metrics are enabled.
-func updateAttestationMetrics(runtime string, err error) {
+// UpdateAttestationMetrics updates the attestation metrics if metrics are enabled.
+func UpdateAttestationMetrics(runtimeID common.Namespace, err error) {
 	if !metrics.Enabled() {
 		return
 	}
+
+	runtime := runtimeID.String()
 
 	teeAttestationsPerformed.With(prometheus.Labels{"runtime": runtime}).Inc()
 	if err != nil {
@@ -59,8 +62,8 @@ func updateAttestationMetrics(runtime string, err error) {
 	}
 }
 
-// initMetrics registers the metrics collectors if metrics are enabled.
-func initMetrics() {
+// InitMetrics registers the metrics collectors if metrics are enabled.
+func InitMetrics() {
 	if !metrics.Enabled() {
 		return
 	}

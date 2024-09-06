@@ -5,19 +5,16 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/oasisprotocol/oasis-core/go/common"
-	"github.com/oasisprotocol/oasis-core/go/common/cbor"
-	"github.com/oasisprotocol/oasis-core/go/common/node"
 	"github.com/oasisprotocol/oasis-core/go/common/sgx/pcs"
-	sgxQuote "github.com/oasisprotocol/oasis-core/go/common/sgx/quote"
-	"github.com/oasisprotocol/oasis-core/go/common/version"
 	consensus "github.com/oasisprotocol/oasis-core/go/consensus/api"
+	"github.com/oasisprotocol/oasis-core/go/runtime/host"
 	"github.com/oasisprotocol/oasis-core/go/runtime/host/protocol"
+	sgxCommon "github.com/oasisprotocol/oasis-core/go/runtime/host/sgx/common"
 )
 
 type teeStateMock struct{}
 
-func (ec *teeStateMock) Init(ctx context.Context, sp *sgxProvisioner, _ common.Namespace, _ version.Version) ([]byte, error) {
+func (ec *teeStateMock) Init(ctx context.Context, sp *sgxProvisioner, _ *host.Config) ([]byte, error) {
 	// Check whether the consensus layer even supports ECDSA attestations.
 	regParams, err := sp.consensus.Registry().ConsensusParameters(ctx, consensus.HeightLatest)
 	if err != nil {
@@ -56,40 +53,14 @@ func (ec *teeStateMock) Update(ctx context.Context, sp *sgxProvisioner, conn pro
 		return nil, fmt.Errorf("PCK verification failed: %w", err)
 	}
 
-	tcbBundle, err := sp.pcs.GetTCBBundle(ctx, pckInfo.FMSPC, pcs.UpdateStandard)
+	tcbBundle, err := sp.pcs.GetTCBBundle(ctx, pcs.TeeTypeSGX, pckInfo.FMSPC, pcs.UpdateStandard)
 	if err != nil {
 		return nil, err
 	}
 
-	// Prepare quote structure.
-	q := sgxQuote.Quote{
-		PCS: &pcs.QuoteBundle{
-			Quote: rawQuote,
-			TCB:   *tcbBundle,
-		},
+	quoteBundle := &pcs.QuoteBundle{
+		Quote: rawQuote,
+		TCB:   *tcbBundle,
 	}
-
-	// Call the runtime with the quote and TCB bundle.
-	rspBody, err := conn.Call(
-		ctx,
-		&protocol.Body{
-			RuntimeCapabilityTEERakQuoteRequest: &protocol.RuntimeCapabilityTEERakQuoteRequest{
-				Quote: q,
-			},
-		},
-	)
-	if err != nil {
-		return nil, fmt.Errorf("error while configuring quote: %w", err)
-	}
-	rsp := rspBody.RuntimeCapabilityTEERakQuoteResponse
-	if rsp == nil {
-		return nil, fmt.Errorf("unexpected response from runtime")
-	}
-
-	return cbor.Marshal(node.SGXAttestation{
-		Versioned: cbor.NewVersioned(node.LatestSGXAttestationVersion),
-		Quote:     q,
-		Height:    rsp.Height,
-		Signature: rsp.Signature,
-	}), nil
+	return sgxCommon.UpdateRuntimeQuote(ctx, conn, quoteBundle)
 }

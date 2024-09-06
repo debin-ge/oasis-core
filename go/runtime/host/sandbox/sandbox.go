@@ -68,6 +68,7 @@ type Config struct {
 // HostInitializerParams contains parameters for the HostInitializer function.
 type HostInitializerParams struct {
 	Runtime    host.Runtime
+	Config     *host.Config
 	Version    version.Version
 	Process    process.Process
 	Connection protocol.Connection
@@ -395,6 +396,7 @@ func (r *sandboxedRuntime) startProcess() (err error) {
 
 	hp := &HostInitializerParams{
 		Runtime:                   r,
+		Config:                    &r.rtCfg,
 		Version:                   *rtVersion,
 		Process:                   p,
 		Connection:                pc,
@@ -612,19 +614,17 @@ func (r *sandboxedRuntime) manager() {
 // DefaultGetSandboxConfig is the default function for generating sandbox configuration.
 func DefaultGetSandboxConfig(logger *logging.Logger, sandboxBinaryPath string) GetSandboxConfigFunc {
 	return func(hostCfg host.Config, conn Connector, _ string) (process.Config, error) {
-		if numComps := len(hostCfg.Components); numComps != 1 {
-			return process.Config{}, fmt.Errorf("expected a single component (got %d)", numComps)
-		}
-		comp := hostCfg.Bundle.Manifest.GetComponentByID(hostCfg.Components[0])
-		if comp == nil {
-			return process.Config{}, fmt.Errorf("component '%s' not available", hostCfg.Components[0])
+		comp, err := hostCfg.GetComponent()
+		if err != nil {
+			return process.Config{}, err
 		}
 
 		logWrapper := host.NewRuntimeLogWrapper(
 			logger,
 			"runtime_id", hostCfg.Bundle.Manifest.ID,
 			"runtime_name", hostCfg.Bundle.Manifest.Name,
-			"component", comp.Kind,
+			"component", comp.ID(),
+			"provisioner", "sandbox",
 		)
 		us, ok := conn.(*UnixSocketConnector)
 		if !ok {
