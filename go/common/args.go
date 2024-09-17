@@ -17,8 +17,8 @@ func TrimArgs(osArgs []string) []string {
 
 	for i, w := range osArgs {
 		if w == argSeparator {
-			return append([]string{osArgs[0]}, osArgs[i+1:]...)
+			return append([]string{osArgs[0]}, osArgs[i+1:]...) //nolint:gosec // false G602 out of range
 		}
 	}
-	return osArgs[0:1]
+	return osArgs[0:1] //nolint:gosec // false G602 out of range
 }

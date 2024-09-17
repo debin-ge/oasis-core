@@ -10,8 +10,9 @@ linters-settings:
       # https://github.com/securego/gosec#available-rules
       - G402
       - G404
+      - G115 # Integer conversion with overflow check; many false positives
   govet:
-    check-shadowing: true
+    shadow: true
     # Enable once suggested fixes are shown: https://github.com/golangci/golangci-lint/issues/2134
     #enable:
     #  - fieldalignment
@@ -56,10 +57,9 @@ linters:
   disable-all: true
   enable:
     - bodyclose
+    - copyloopvar
     - depguard
     - errcheck
-    - exportloopref
-    - gas
     - goconst
     - gocyclo
     - gofumpt
@@ -69,7 +69,6 @@ linters:
     - gosimple
     - govet
     - ineffassign
-    - megacheck
     - misspell
     - revive
     - rowserrcheck
@@ -79,11 +78,6 @@ linters:
     - unused
 
 run:
-  skip-dirs:
-    # golang-ci-lint requires that files compile for certain linters
-    # to run, and Go plugins do not compile unless `-buildmode=plugin`
-    # is set, which linters do not do.
-    - oasis-test-runner/scenario/pluginsigner/example_signer_plugin
 
 exclude-use-default: false
 
@@ -92,3 +86,8 @@ issues:
     - EXC0014 # un-exclude revive `exported` which warns about incorrect comments on exported items.
   exclude:
     - context-as-argument # revive
+  exclude-dirs:
+    # golang-ci-lint requires that files compile for certain linters
+    # to run, and Go plugins do not compile unless `-buildmode=plugin`
+    # is set, which linters do not do.
+    - oasis-test-runner/scenario/pluginsigner/example_signer_plugin
