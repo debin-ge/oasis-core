@@ -111,6 +111,11 @@ impl Sessions {
         }
     }
 
+    /// Set the session builder to use.
+    fn set_builder(&mut self, builder: Builder) {
+        self.builder = builder;
+    }
+
     /// Create a new multiplexed session.
     fn create_session(
         mut builder: Builder,
@@ -314,6 +319,12 @@ impl Demux {
         }
     }
 
+    /// Set the session builder to use.
+    pub fn set_session_builder(&self, builder: Builder) {
+        let mut sessions = self.sessions.lock().unwrap();
+        sessions.set_builder(builder);
+    }
+
     async fn get_or_create_session(
         &self,
         peer_id: PeerID,
@@ -330,7 +341,7 @@ impl Demux {
     /// Process a frame, returning the locked session guard and decoded message.
     ///
     /// Any data that needs to be transmitted back to the peer is written to the passed writer.
-    pub async fn process_frame<W: Write>(
+    pub(crate) async fn process_frame<W: Write>(
         &self,
         peer_id: PeerID,
         data: Vec<u8>,
@@ -366,7 +377,7 @@ impl Demux {
     /// Closes the given session.
     ///
     /// Any data that needs to be transmitted back to the peer is written to the passed writer.
-    pub fn close<W: Write>(
+    pub(crate) fn close<W: Write>(
         &self,
         mut session: OwnedMutexGuard<MultiplexedSession>,
         writer: W,
